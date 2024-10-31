@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webcam Object Detection</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f06, #48f);
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+
+        nav {
+            background-color: #333;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: calc(100vh - 40px); /* Adjust height to account for nav */
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        img {
+            border: 5px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">Upload de imagem</a>
+        <a href="/video">Detecção webcam</a>
+    </nav>
+    <h1>Yolo object Detection</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
+    <img id="processed" width="640" height="480"/>
+   
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const content = canvas.getContext('2d');
+        const processed = document.getElementById('processed');
+
+        navigator.mediaDevices.getUserMedia({video: true})
+            .then((stream) => {
+                video.srcObject = stream;
+            })
+            .catch((err) => console.error('Erro ao acessar webcam', err));
+
+        function sendFrame(){
+            content.drawImage(video, 0,0,canvas.width,canvas.height);
+            const frame = canvas.toDataURL('image/jpeg');
+
+            fetch('/process_frame', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body:JSON.stringify({frame:frame})
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                processed.src = URL.createObjectURL(blob);
+            })
+            .catch(err => console.error("Erro no processamento", err));
+        }
+
+        async function sendFrame() {
+            content.drawImage(video, 0,0,canvas.width, canvas.height);
+            const frame = canvas.toDataURL('image/jpeg');
+
+            try{
+                const response = await fetch('/process_frame', {
+                    method:'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body:JSON.stringify({frame:frame})
+                });
+                const blob = await response.blob();
+                processed.src = URL.createObjectURL(blob);
+            } catch(err){
+                console.error("Erro no processamento:", err);
+            }
+
+            requestAnimationFrame(sendFrame);
+        }
+
+        sendFrame();
+    </script>
+</body>
+</html>
